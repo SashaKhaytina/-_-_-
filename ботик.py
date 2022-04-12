@@ -71,8 +71,29 @@ class Menu:
             "Далее выдаёт по одному вопросы и считает результат в процентах")
 
     def Subject_def(self, update, context):
+
         update.message.reply_text(
-            "Список предметов в виде кнопок, там же ссылки на Якласс теорию)")
+            "Список предметов в виде кнопок, там же ссылки на Якласс теорию)", reply_markup=ReplyKeyboardRemove())
+
+        self.Predmets(update, context)
+
+
+    def Predmets(self, update, context):
+        subjects_keyboard = [['/Math', '/Russian'],
+                             ['/Biology', '/Chemistry'],
+                             ['/Geography', '/History']]
+        self.markup_subj = ReplyKeyboardMarkup(subjects_keyboard, one_time_keyboard=False)
+        update.message.reply_text(
+            "Ваши предмметы (см кнопки)", reply_markup=self.markup_subj)
+
+    def Math(self, update, context):
+        update.message.reply_text(
+            "Тут пока пусто")
+
+
+
+
+
 
 
 if __name__ == '__main__':
