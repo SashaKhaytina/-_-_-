@@ -1,5 +1,6 @@
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
+import time
 
 
 TOKEN = '5219235474:AAG4SluLc6f44WVFK8KlOnZlRkgXsEK8IJI'
@@ -28,7 +29,7 @@ class Menu:
         updater.idle()
 
     def echo(self, update, context):
-        update.message.reply_text("Пожалуйста, введите команду\n:((")
+        update.message.reply_text("Пожалуйста, введите команду\n:(( \n Чтобы начать сначала введите /start")
 
     def start(self, update, context):
         update.message.reply_text(
@@ -73,8 +74,8 @@ class Menu:
     def Subject_def(self, update, context):
 
         update.message.reply_text(
-            "Список предметов в виде кнопок, там же ссылки на Якласс теорию)", reply_markup=ReplyKeyboardRemove())
-
+            "Список предметов в виде кнопок, там же ссылки на Якласс теорию)")   #, reply_markup=ReplyKeyboardRemove())
+        # self.close_keyboard(self, update, context)
         self.Predmets(update, context)
 
 
@@ -84,11 +85,69 @@ class Menu:
                              ['/Geography', '/History']]
         self.markup_subj = ReplyKeyboardMarkup(subjects_keyboard, one_time_keyboard=False)
         update.message.reply_text(
-            "Ваши предмметы (см кнопки)", reply_markup=self.markup_subj)
+            "Список предметов на кнопках", reply_markup=self.markup_subj)
+        print(1)
+        updater = Updater(TOKEN)
+        print(2)
+        dp = updater.dispatcher
+        print(3)
+        text_handler = MessageHandler(Filters.text & ~Filters.command, self.echo)
+        print(4)
+        dp.add_handler(text_handler)
+        print(5)
+        dp.add_handler(CommandHandler("Math", self.Math))
+        dp.add_handler(CommandHandler("Russian", self.Russian))
+        dp.add_handler(CommandHandler("Chemistry", self.Chemistry))
+        dp.add_handler(CommandHandler("Biology", self.Biology))
+        dp.add_handler(CommandHandler("Geography", self.Geography))
+        dp.add_handler(CommandHandler("History", self.History))
+
+
+        print(6)
+        # dp.add_handler(CommandHandler("help", help))
+        updater.start_polling()
+        print(7)
+        #updater.idle()
+
 
     def Math(self, update, context):
         update.message.reply_text(
-            "Тут пока пусто")
+            "Ваш учебник по алгебре: https://school-textbook.com/algebra/2935-algebra-9-klass-merzljak-ag-polonskij-vb-jakir-ms.html")
+
+        update.message.reply_text(
+            "Ваш учебник по геометрии: https://ege-ok.ru/wp-content/uploads/2014/01/59_2-Geometriya.-7-9-kl.-Uchebnik_Atanasyan-L.S.-i-dr_2010-384s.pdf")
+
+        self.Predmets(update, context)
+
+    def Russian(self, update, context):
+        update.message.reply_text(
+            "Ваш учебник по русскому: https://school-textbook.com/himiya/9-klass-himiya/39992-russkij-jazyk-9-klass-uchebnik-v-2-chastjah-lvova-si-lvov-vv.html")
+        self.Predmets(update, context)
+
+    def Chemistry(self, update, context):
+        update.message.reply_text(
+            "Ваш учебник по химии: https://uchebnik-i-tetrad.com/1890_Chitat_onlajn_uchebnik_po_himii_za_9_klass_Rudzitis_Feldman/index.html#prettyPhoto")
+        self.Predmets(update, context)
+
+    def Biology(self, update, context):
+        update.message.reply_text(
+            "Ваш учебник по биологии: https://school-textbook.com/biologija/39750-biologija-vvedenie-v-obschuju-biologiju-9-klass-pasechnik-vv-kamenskij-aa-kriksunov-ea-shvecov-gg.html")
+        self.Predmets(update, context)
+
+    def Geography(self, update, context):
+        update.message.reply_text(
+            "Ваш атлас: https://school-textbook.com/himiya/9-klass-himiya/39918-atlas-istorija-rossii-xx-nachalo-xix-veka-9-klass.html")
+        update.message.reply_text(
+            "Ваш учебник по географии: https://school-textbook.com/geografiya/12505-geografija-rossii-naselenie-i-hozjajstvo-9-klass-dronov-vp-rom-vja.html"
+        )
+        self.Predmets(update, context)
+
+    def History(self, update, context):
+        update.message.reply_text(
+            "Ваш учебник по всеобщей истории: https://school-textbook.com/vsemirnaya-istoriya/12083-vseobschaya-istoriya-xx-nachalo-xxi-veka-9-klass-aleksashkina-ln.html")
+        self.Predmets(update, context)
+
+
 
 
 
@@ -98,3 +157,8 @@ class Menu:
 
 if __name__ == '__main__':
     Menu()
+    #try:
+    #    Menu()
+    #except Exception as e:
+    #    print(e)  # или import traceback; traceback.print_exc() для печати полной инфы
+    #    time.sleep(15)
