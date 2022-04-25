@@ -1,5 +1,5 @@
     def __init__(self):
-        self.raspisanie = []
+        self.raspisanie = [0, 0, 0, 0, 0, 0, 0]
         reply_keyboard = [['/Time_to_end', '/Timetable'],
                           ['/Redact', '/Homework'],
                           ['/Subject', '/Repetition', '/Help']]
@@ -9,9 +9,11 @@
                              ['/Biology', '/Chemistry'],
                              ['/Geography', '/History'],
                              ['/Back']]
+        predmet_add = [['/Update', '/Back']]
         self.markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
         self.markup_subj = ReplyKeyboardMarkup(subjects_keyboard, one_time_keyboard=False)
         self.markup_reda = ReplyKeyboardMarkup(redact_keyboard, one_time_keyboard=False)
+        self.markup_predmet_add = ReplyKeyboardMarkup(predmet_add, one_time_keyboard=False)
         self.updater = Updater(TOKEN)
         dp = self.updater.dispatcher
         text_handler = MessageHandler(Filters.text & ~Filters.command, self.echo)
@@ -32,12 +34,51 @@
         dp.add_handler(CommandHandler("Geography", self.Geography))
         dp.add_handler(CommandHandler("History", self.History))
         dp.add_handler(CommandHandler("Back", self.start))
+        dp.add_handler(CommandHandler("Update", self.update))
         dp.add_handler(CommandHandler("Redact_Timetable", self.add_timetable))
         self.updater.start_polling()
+        self.flag_add_timetable_day = False
+        self.flag_add_timetable_predmet = False
+        self.ras = []
+        self.days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
+        self.day = ''
         self.updater.idle()
 
     def echo(self, update, context):
-        update.message.reply_text("Пожалуйста, введите команду\n:((")
+        if update.message.text in self.days and self.flag_add_timetable_day:
+            self.day = update.message.text
+            self.day_add(update, self.day)
+            self.flag_add_timetable_day = False
+        elif self.flag_add_timetable_predmet:
+            self.predmet_add(update, update.message.text)
+        else:
+            update.message.reply_text("Пожалуйста, введите команду\n:((")
+
+    def day_add(self, update, day):
+        update.message.reply_text(
+            f"Ля ля ля, вы выбрали день {day}.Напишите расписание уроков, начиная с первого(если есть окно или"
+            f" уроки начинаются не с первого отправьте '-') в конце отправьте 'Update'. выход сбросит изменения",
+            reply_markup=self.markup_predmet_add
+        )
+        self.flag_add_timetable_predmet = True
+
+    def predmet_add(self, update, s):
+        update.message.reply_text(
+            f"Ля ля ля, вы выбрали предмет {s}. продолжайте",
+            reply_markup=self.markup_predmet_add
+        )
+        self.ras.append(update.message.text)
+
+    def update(self, update, context):
+        update.message.reply_text(
+            f" вы сохранили день {self.day} за текст в сообщенях отвечаю не я))",
+            reply_markup=self.markup_reda
+        )
+        self.flag_add_timetable_predmet = False
+        self.flag_add_timetable_day = False
+        self.raspisanie[self.days.index(self.day)] = self.ras
+        self.ras = []
+        self.day = ''
 
     def start(self, update, context):
         update.message.reply_text(
@@ -73,15 +114,7 @@
     def add_timetable(self, update, context):
         update.message.reply_text(
             "Напишите день недели")
-        if update.message.text == 'Понедельник':
-            print(1)
-            update.message.reply_text(
-                "Напишите расписание уроков, начиная с первого(если есть окно или уроки начинаются не с "
-                "первого поставьте '-') в конце введите 'Готово'")
-            while update.message.text != 'Готово':
-                ras.append(update.message.text)
-            self.raspisanie[0] = ras
-
+        self.flag_add_timetable_day = True
 
     def Homework_def(self, update, context):
         update.message.reply_text(
