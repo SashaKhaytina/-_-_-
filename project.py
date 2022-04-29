@@ -1,6 +1,7 @@
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
 import time
+import sqlite3
 
 
 TOKEN = '5219235474:AAG4SluLc6f44WVFK8KlOnZlRkgXsEK8IJI'
@@ -8,6 +9,15 @@ TOKEN = '5219235474:AAG4SluLc6f44WVFK8KlOnZlRkgXsEK8IJI'
 
 class Menu:
     def __init__(self):
+        self.person_id = '1'
+        self.db = sqlite3.connect("info.db")
+        self.sql = self.db.cursor()
+        self.sql.execute("""CREATE TABLE IF NOT EXISTS users(
+                    id TEXT,
+                    question TEXT,
+                    answer TEXT)""")
+        self.db.commit()
+        self.db.close()
         self.raspisanie = [0, 0, 0, 0, 0, 0, 0]
         reply_keyboard = [['/Time_to_end', '/Timetable'],
                           ['/Redact', '/Homework'],
@@ -19,11 +29,14 @@ class Menu:
                              ['/Geography', '/History'],
                              ['/Back']]
         predmet_add = [['/Update', '/Back']]
+        add_question_answer = [['/Input', '/Repetition', '/Back']]
+
         self.markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
         self.markup_subj = ReplyKeyboardMarkup(subjects_keyboard, one_time_keyboard=False)
         self.markup_reda = ReplyKeyboardMarkup(redact_keyboard, one_time_keyboard=False)
         self.markup_predmet_add = ReplyKeyboardMarkup(predmet_add, one_time_keyboard=False)
         self.markup_question = ReplyKeyboardMarkup(predmet_add, one_time_keyboard=False)
+        self.markup_repet = ReplyKeyboardMarkup(add_question_answer, one_time_keyboard=False)
         self.updater = Updater(TOKEN)
         dp = self.updater.dispatcher
         text_handler = MessageHandler(Filters.text & ~Filters.command, self.echo)
@@ -46,12 +59,17 @@ class Menu:
         dp.add_handler(CommandHandler("Back", self.start))
         dp.add_handler(CommandHandler("Update", self.update))
         dp.add_handler(CommandHandler("Redact_Timetable", self.add_timetable))
+        dp.add_handler(CommandHandler("Input", self.Add_answer_quest))
+        dp.add_handler(CommandHandler("Repetition", self.Repet_formules))
         self.updater.start_polling()
         self.flag_add_timetable_day = False
         self.flag_add_timetable_predmet = False
+        self.flag_add_question = False
+        self.flag_add_answer = False
         self.ras = []
         self.days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
         self.day = ''
+        self.q_a = []
         self.updater.idle()
 
     def echo(self, update, context):
@@ -61,6 +79,10 @@ class Menu:
             self.flag_add_timetable_day = False
         elif self.flag_add_timetable_predmet:
             self.predmet_add(update, update.message.text)
+        elif self.flag_add_question:
+            self.Add_answer_quest(update, update.message.text)
+        elif self.flag_add_answer:
+            self.Add_answer_quest(update, update.message.text)
         else:
             update.message.reply_text("Пожалуйста, введите команду\n:((")
 
@@ -117,7 +139,7 @@ class Menu:
 
     def Redact_def(self, update, context):
         update.message.reply_text(
-            "Ля ля ля большой текст о способностях\nЯ умею танцевать, прыгать бегать и играть\n сальто прыгнуть кинуть диск\n Я красивенький артист :)",
+            "Ля ля ля большой текст о способностях",
             reply_markup=self.markup_reda
         )
 
@@ -135,10 +157,42 @@ class Menu:
         update.message.reply_text(
             "Предлагает записать вопросы в виде вопрос-ответ, или же повторить формулы"
             " (берет из БД в зависимости от класса человека)"
-            "Далее выдаёт по одному вопросы и считает результат в процентах")
+            "Далее выдаёт по одному вопросы и считает результат в процентах",
+            reply_markup=self.markup_repet
+        )
+
+    def Add_answer_quest(self, update, text):
+        if self.flag_add_question is False and self.flag_add_answer is False:
+            update.message.reply_text(
+                "Введите вопрос")
+            self.flag_add_question = True
+        elif self.flag_add_question:
+            self.q_a.append(text)
+            self.flag_add_question = False
+            update.message.reply_text(
+                "Введите ответ")
+            self.flag_add_answer = True
+        else:
+            self.q_a.append(text)
+            self.flag_add_answer = False
+            self.db = sqlite3.connect("info.db")
+            self.sql = self.db.cursor()
+            self.sql.execute(f"""INSERT INTO users (id, question, answer) VALUES 
+                            ('{self.person_id}', '{self.q_a[0]}', '{self.q_a[1]}')""")
+            self.db.commit()
+            self.q_a = []
+
+    def Repet_formules(self, update, context):
+        print('eee')
+        self.db = sqlite3.connect("info.db")
+        self.sql = self.db.cursor()
+        print('33432')
+        result = self.sql.execute("""SELECT * FROM users WHERE id = ?""",
+                                  (self.person_id,)).fetchall()
+        print(result)
         update.message.reply_text(
-            "Введите вопрос",
-            reply_markup=self.markup_question)
+            str(result)
+        )
 
     def Subject_def(self, update, context):
         update.message.reply_text(
@@ -175,7 +229,6 @@ class Menu:
     def History(self, update, context):
         update.message.reply_text(
             "Ваш учебник по всеобщей истории: https://school-textbook.com/vsemirnaya-istoriya/12083-vseobschaya-istoriya-xx-nachalo-xxi-veka-9-klass-aleksashkina-ln.html")
-
 
 
 if __name__ == '__main__':
