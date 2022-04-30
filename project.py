@@ -17,6 +17,7 @@ class Menu:
                     question TEXT,
                     answer TEXT)""")
         self.db.commit()
+        self.result = self.sql.execute("""SELECT * FROM users WHERE id = ?""", (self.person_id,)).fetchall()
         self.db.close()
         self.raspisanie = [0, 0, 0, 0, 0, 0, 0]
         reply_keyboard = [['/Time_to_end', '/Timetable'],
@@ -29,7 +30,7 @@ class Menu:
                              ['/Geography', '/History'],
                              ['/Back']]
         predmet_add = [['/Update', '/Back']]
-        add_question_answer = [['/Input', '/Repetition', '/Back']]
+        add_question_answer = [['/Input', '/Repetition_start', '/Back']]
 
         self.markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
         self.markup_subj = ReplyKeyboardMarkup(subjects_keyboard, one_time_keyboard=False)
@@ -60,16 +61,20 @@ class Menu:
         dp.add_handler(CommandHandler("Update", self.update))
         dp.add_handler(CommandHandler("Redact_Timetable", self.add_timetable))
         dp.add_handler(CommandHandler("Input", self.Add_answer_quest))
-        dp.add_handler(CommandHandler("Repetition", self.Repet_formules))
+        dp.add_handler(CommandHandler("Repetition_start", self.Repet_formules))
         self.updater.start_polling()
         self.flag_add_timetable_day = False
         self.flag_add_timetable_predmet = False
         self.flag_add_question = False
         self.flag_add_answer = False
+        self.flag_person_ans = False
+        self.is_answer = False
         self.ras = []
         self.days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
         self.day = ''
         self.q_a = []
+        self.i = 0
+        self.sum_b = 0
         self.updater.idle()
 
     def echo(self, update, context):
@@ -79,6 +84,9 @@ class Menu:
             self.flag_add_timetable_day = False
         elif self.flag_add_timetable_predmet:
             self.predmet_add(update, update.message.text)
+        elif self.flag_person_ans:
+            self.is_answer = True
+            self.Repet_formules(update, update.message.text)
         elif self.flag_add_question:
             self.Add_answer_quest(update, update.message.text)
         elif self.flag_add_answer:
@@ -180,19 +188,52 @@ class Menu:
             self.sql.execute(f"""INSERT INTO users (id, question, answer) VALUES 
                             ('{self.person_id}', '{self.q_a[0]}', '{self.q_a[1]}')""")
             self.db.commit()
+            self.result = self.sql.execute("""SELECT * FROM users WHERE id = ?""", (self.person_id,)).fetchall()
+            self.db.close()
             self.q_a = []
 
     def Repet_formules(self, update, context):
-        print('eee')
-        self.db = sqlite3.connect("info.db")
-        self.sql = self.db.cursor()
-        print('33432')
-        result = self.sql.execute("""SELECT * FROM users WHERE id = ?""",
-                                  (self.person_id,)).fetchall()
-        print(result)
-        update.message.reply_text(
-            str(result)
-        )
+        if self.i < len(self.result):
+            if self.flag_person_ans is False:
+                update.message.reply_text(
+                    str(self.result[self.i][1])
+                )
+                update.message.reply_text(
+                    "Введите ответ"
+                )
+                self.flag_person_ans = True
+            elif self.is_answer is True:
+                if context.lower() == self.result[self.i][2].lower():
+                    update.message.reply_text(
+                        "Правильный ответ!")
+                    if self.i + 1 < len(self.result):
+                        update.message.reply_text(
+                            "Продолжаем...")
+                    else:
+                        update.message.reply_text(
+                            "Подсчет результатов...")
+                    self.sum_b += 1
+                else:
+                    update.message.reply_text(
+                        "Неравильный ответ!")
+                    update.message.reply_text(
+                        f"Ответ: {str(self.result[self.i][2])}")
+                    if self.i + 1 < len(self.result):
+                        update.message.reply_text(
+                            "Продолжаем...")
+                    else:
+                        update.message.reply_text(
+                            "Подсчет результатов...")
+                self.i += 1
+                self.flag_person_ans = False
+                self.is_answer = False
+                self.Repet_formules(update, context)
+        else:
+            update.message.reply_text(
+                "Тест закончен!"
+                f"Вы получили {str(self.sum_b)} из {str(len(self.result))}!")
+            self.i = 0
+            self.sum_b = 0
 
     def Subject_def(self, update, context):
         update.message.reply_text(
