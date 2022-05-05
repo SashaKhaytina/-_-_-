@@ -1,14 +1,3 @@
-  import logging
-
-from telegram.ext import Updater, MessageHandler, Filters, CommandHandler
-from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
-import time
-import sqlite3
-
-TOKEN = '5219235474:AAG4SluLc6f44WVFK8KlOnZlRkgXsEK8IJI'
-
-
-class Menu:
     def __init__(self):
         self.person_id = '1'
         self.db = sqlite3.connect("info1.db")
@@ -43,6 +32,8 @@ class Menu:
                              ['/Biology', '/Chemistry'],
                              ['/Geography', '/History'],
                              ['/Back']]
+        timetable_keyboard = [['/To_Day'], ['/To_Week'],
+                              ['/Back']]
         predmet_add = [['/Update', '/Back']]
         add_question_answer = [['/Input', '/Repetition_start', '/Back']]
         self.markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
@@ -52,6 +43,7 @@ class Menu:
         self.markup_reda = ReplyKeyboardMarkup(redact_keyboard, one_time_keyboard=False)
         self.markup_predmet_add = ReplyKeyboardMarkup(predmet_add, one_time_keyboard=False)
         self.markup_question = ReplyKeyboardMarkup(predmet_add, one_time_keyboard=False)
+        self.markup_timetable = ReplyKeyboardMarkup(timetable_keyboard, one_time_keyboard=False)
         self.markup_repet = ReplyKeyboardMarkup(add_question_answer, one_time_keyboard=False)
         self.updater = Updater(TOKEN)
         dp = self.updater.dispatcher
@@ -76,6 +68,8 @@ class Menu:
         dp.add_handler(CommandHandler("Menu", self.Menu))
         dp.add_handler(CommandHandler("Registration", self.Registration_def))
         dp.add_handler(CommandHandler("Update", self.update))
+        dp.add_handler(CommandHandler("To_Day", self.day_def))
+        dp.add_handler(CommandHandler("To_Week", self.week_def))
         dp.add_handler(CommandHandler("Redact_Timetable", self.add_timetable))
         dp.add_handler(CommandHandler("Input", self.Add_answer_quest))
         dp.add_handler(CommandHandler("Repetition_start", self.Repet_formules))
@@ -85,6 +79,7 @@ class Menu:
         self.flag_add_question = False
         self.flag_add_answer = False
         self.flag_person_ans = False
+        self.flag_day = False
         self.flag_reg = False
         self.is_answer = False
         self.ras = []
@@ -111,6 +106,9 @@ class Menu:
             self.Add_answer_quest(update, update.message.text)
         elif self.flag_reg:
             self.Reg(update, update.message.text)
+        elif self.flag_day and update.message.text in self.days:
+            self.flag_day = False
+            self.day_info(update, update.message.text)
         else:
             update.message.reply_text("Пожалуйста, введите команду\n:((")
 
@@ -121,6 +119,17 @@ class Menu:
             reply_markup=self.markup_predmet_add
         )
         self.flag_add_timetable_predmet = True
+
+    def day_info(self, update, day):
+        con = sqlite3.connect("info1.db")
+        cur = con.cursor()
+        otvet = cur.execute('''SELECT raspisanie FROM users_R WHERE id IS (?)''', (self.person_id,)).fetchall()
+        print(self.person_id, otvet)
+        sms = otvet[0][0].split('razdel')
+        i = self.days.index(day)
+        s = str(self.days[i]) + ': \n' + str("\n".join(sms[i].split('/')))
+        update.message.reply_text(s, reply_markup=self.markup_timetable)
+        con.close()
 
     def predmet_add(self, update, s):
         update.message.reply_text(
@@ -161,6 +170,21 @@ class Menu:
         self.db_ras.close()
         self.ras = []
         self.day = ''
+
+    def week_def(self, update, context):
+        con = sqlite3.connect("info1.db")
+        cur = con.cursor()
+        otvet = cur.execute('''SELECT raspisanie FROM users_R WHERE id IS (?)''', (self.person_id,)).fetchall()
+        print(self.person_id, otvet)
+        sms = otvet[0][0].split('razdel')
+        for i in range(len(sms)):
+            s = str(self.days[i]) + ': \n' + str("\n".join(sms[i].split('/')))
+            update.message.reply_text(s, reply_markup=self.markup_timetable)
+        con.close()
+
+    def day_def(self, update, context):
+        update.message.reply_text("Введите день недели", reply_markup=self.markup_timetable)
+        self.flag_day = True
 
     def start(self, update, context):
         update.message.reply_text(
@@ -230,17 +254,8 @@ class Menu:
 
     def Timetable_def(self, update, context):
         update.message.reply_text(
-            "Выдаёт расписание: всё, по дню недели, числу"
-            "Проверить наличие дз на число")
-        con = sqlite3.connect("info1.db")
-        cur = con.cursor()
-        otvet = cur.execute('''SELECT raspisanie FROM users_R WHERE id IS (?)''', (self.person_id, )).fetchall()
-        print(self.person_id, otvet)
-        sms = otvet[0][0].split('razdel')
-        for i in range(len(sms)):
-            s = str(self.days[i]) + ': \n' + str("\n".join(sms[i].split('/')))
-            update.message.reply_text(s)
-        con.close()
+            "Выдаёт расписание: всё, по дню недели"
+            "Проверить наличие дз на число", reply_markup=self.markup_timetable)
 
     def Time_to_end_def(self, update, context):
         update.message.reply_text("Предлагает выбрать: до конца года(установленное значение), до введённой даты "
@@ -371,7 +386,3 @@ class Menu:
     def History(self, update, context):
         update.message.reply_text(
             "Ваш учебник по всеобщей истории: https://school-textbook.com/vsemirnaya-istoriya/12083-vseobschaya-istoriya-xx-nachalo-xxi-veka-9-klass-aleksashkina-ln.html")
-
-
-if __name__ == '__main__':
-    Menu()
