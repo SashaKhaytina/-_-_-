@@ -1,14 +1,3 @@
-import logging
-
-from telegram.ext import Updater, MessageHandler, Filters, CommandHandler
-from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
-import time
-import sqlite3
-
-TOKEN = '5219235474:AAG4SluLc6f44WVFK8KlOnZlRkgXsEK8IJI'
-
-
-class Menu:
     def __init__(self):
         self.person_id = '1'
         self.db = sqlite3.connect("info1.db")
@@ -136,7 +125,19 @@ class Menu:
         )
         self.flag_add_timetable_predmet = False
         self.flag_add_timetable_day = False
-        self.raspisanie[self.days.index(self.day)] = "/".join(self.ras)
+        print(self.ras)
+        print(len(self.ras))
+        print(self.ras[0])
+        if len(self.ras) > 1:
+            self.raspisanie[self.days.index(self.day)] = ("/".join(self.ras))
+        elif len(self.ras) == 1:
+            self.raspisanie[self.days.index(self.day)] = (str(self.ras[0]))
+        else:
+            update.message.reply_text(
+                f" вы не можете ввести пустой день., напиите прочерк",
+                reply_markup=self.markup_reda
+            )
+        print(self.raspisanie)
         self.db_ras = sqlite3.connect("info1.db")
         self.sql_ras = self.db_ras.cursor()
         self.sql_ras.execute(f"""INSERT INTO users_R (id, raspisanie) VALUES 
@@ -185,21 +186,31 @@ class Menu:
                 self.person_id = text
                 db = sqlite3.connect("info1.db")
                 sql = db.cursor()
+                raspisanie = '0razdel0razdel0razdel0razdel0razdel0razdel0'
                 sql.execute(f"""INSERT INTO users (id) VALUES 
                                             ('{self.person_id}')""")
+                sql.execute(f"""INSERT INTO users_R (id, raspisanie) VALUES 
+                                                                        ('{self.person_id}', '{raspisanie}')""")
+
+                print(self.raspisanie)
                 db.commit()
                 update.message.reply_text(
-                    f"Вы зарегестрировались под ником {text}", reply_markup=self.markup_end_reg)
+                    f"Вы зарегистрировались под ником {text}", reply_markup=self.markup_end_reg)
                 self.flag_reg = False
         else:
             self.person_id = text
             db = sqlite3.connect("info1.db")
             sql = db.cursor()
+            self.raspisanie = '0razdel0razdel0razdel0razdel0razdel0razdel0'
             sql.execute(f"""INSERT INTO users (id) VALUES 
                                                         ('{self.person_id}')""")
+            sql.execute(f"""INSERT INTO users_R (id, raspisanie) VALUES 
+                                                                ('{self.person_id}', '{self.raspisanie}')""")
+
+            print(self.raspisanie)
             db.commit()
             update.message.reply_text(
-                f"Вы зарегестрировались под ником {text}", reply_markup=self.markup_end_reg)
+                f"Вы зарегистрировались под ником {text}", reply_markup=self.markup_end_reg)
             self.flag_reg = False
 
     def Timetable_def(self, update, context):
@@ -209,6 +220,7 @@ class Menu:
         con = sqlite3.connect("info1.db")
         cur = con.cursor()
         otvet = cur.execute('''SELECT raspisanie FROM users_R WHERE id IS (?)''', (self.person_id, )).fetchall()
+        print(self.person_id, otvet)
         sms = otvet[0][0].split('razdel')
         for i in range(len(sms)):
             s = str(self.days[i]) + ': \n' + str("\n".join(sms[i].split('/')))
@@ -345,6 +357,3 @@ class Menu:
         update.message.reply_text(
             "Ваш учебник по всеобщей истории: https://school-textbook.com/vsemirnaya-istoriya/12083-vseobschaya-istoriya-xx-nachalo-xxi-veka-9-klass-aleksashkina-ln.html")
 
-
-if __name__ == '__main__':
-    Menu()
