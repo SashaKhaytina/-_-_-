@@ -1,3 +1,14 @@
+  import logging
+
+from telegram.ext import Updater, MessageHandler, Filters, CommandHandler
+from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
+import time
+import sqlite3
+
+TOKEN = '5219235474:AAG4SluLc6f44WVFK8KlOnZlRkgXsEK8IJI'
+
+
+class Menu:
     def __init__(self):
         self.person_id = '1'
         self.db = sqlite3.connect("info1.db")
@@ -20,7 +31,7 @@
         self.db_user.commit()
         self.result = self.sql.execute("""SELECT * FROM users WHERE id = ?""", (self.person_id,)).fetchall()
         self.db.close()
-        self.raspisanie = ['0', '0', '0', '0', '0', '0', '0']
+        self.raspisanie = '0razdel0razdel0razdel0razdel0razdel0razdel0'
         start_keyboard = [['/Registration']]
         reg_end_keyboard = [['/Menu']]
         reply_keyboard = [['/Time_to_end', '/Timetable'],
@@ -127,21 +138,25 @@
         self.flag_add_timetable_day = False
         print(self.ras)
         print(len(self.ras))
-        print(self.ras[0])
+        con = sqlite3.connect("info1.db")
+        cur = con.cursor()
+        self.raspisanie_red = cur.execute('''SELECT raspisanie FROM users_R WHERE id IS (?)''', (self.person_id, )).fetchall()[0][0]
+        self.raspisanie_red = self.raspisanie_red.split('razdel')
         if len(self.ras) > 1:
-            self.raspisanie[self.days.index(self.day)] = ("/".join(self.ras))
+            print("/".join(self.ras))
+            print(self.raspisanie_red[self.days.index(self.day)])
+            self.raspisanie_red[self.days.index(self.day)] = '/'.join(self.ras)
         elif len(self.ras) == 1:
-            self.raspisanie[self.days.index(self.day)] = (str(self.ras[0]))
+            self.raspisanie_red[self.days.index(self.day)] = (str(self.ras[0]))
         else:
             update.message.reply_text(
                 f" вы не можете ввести пустой день., напиите прочерк",
                 reply_markup=self.markup_reda
             )
-        print(self.raspisanie)
+        print(self.raspisanie_red)
         self.db_ras = sqlite3.connect("info1.db")
         self.sql_ras = self.db_ras.cursor()
-        self.sql_ras.execute(f"""INSERT INTO users_R (id, raspisanie) VALUES 
-                                    ('{self.person_id}', '{'razdel'.join(self.raspisanie)}')""")
+        self.sql_ras.execute("""UPDATE users_R SET raspisanie = (?) WHERE id == (?)""", ('razdel'.join(self.raspisanie_red), self.person_id))
         self.db_ras.commit()
         self.db_ras.close()
         self.ras = []
@@ -186,11 +201,11 @@
                 self.person_id = text
                 db = sqlite3.connect("info1.db")
                 sql = db.cursor()
-                raspisanie = '0razdel0razdel0razdel0razdel0razdel0razdel0'
+                self.raspisanie = '0razdel0razdel0razdel0razdel0razdel0razdel0'
                 sql.execute(f"""INSERT INTO users (id) VALUES 
                                             ('{self.person_id}')""")
                 sql.execute(f"""INSERT INTO users_R (id, raspisanie) VALUES 
-                                                                        ('{self.person_id}', '{raspisanie}')""")
+                                                                        ('{self.person_id}', '{self.raspisanie}')""")
 
                 print(self.raspisanie)
                 db.commit()
@@ -357,3 +372,6 @@
         update.message.reply_text(
             "Ваш учебник по всеобщей истории: https://school-textbook.com/vsemirnaya-istoriya/12083-vseobschaya-istoriya-xx-nachalo-xxi-veka-9-klass-aleksashkina-ln.html")
 
+
+if __name__ == '__main__':
+    Menu()
