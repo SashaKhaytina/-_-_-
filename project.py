@@ -1,28 +1,41 @@
+from telegram.ext import Updater, MessageHandler, Filters, CommandHandler
+from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
+import time
+from random import shuffle
+import sqlite3
+
+
+TOKEN = '5219235474:AAG4SluLc6f44WVFK8KlOnZlRkgXsEK8IJI'
+
+
+class Menu:
     def __init__(self):
         self.person_id = '1'
         self.db = sqlite3.connect("info1.db")
         self.sql = self.db.cursor()
         self.sql.execute("""CREATE TABLE IF NOT EXISTS users_Repetition(
-                    id TEXT,
-                    question TEXT,
-                    answer TEXT)""")
+                            id TEXT,
+                            question TEXT,
+                            answer TEXT)""")
         self.db.commit()
         self.db_ras = sqlite3.connect("info1.db")
         self.sql_ras = self.db_ras.cursor()
         self.sql_ras.execute("""CREATE TABLE IF NOT EXISTS users_R(
-                            id TEXT,
-                            raspisanie TEXT)""")
+                                    id TEXT,
+                                    raspisanie TEXT)""")
         self.db_ras.commit()
         self.db_user = sqlite3.connect("info1.db")
         self.sql_user = self.db_user.cursor()
         self.sql_user.execute("""CREATE TABLE IF NOT EXISTS users(
-                                    id TEXT)""")
+                                            id TEXT)""")
         self.db_user.commit()
         self.result = self.sql.execute("""SELECT * FROM users WHERE id = ?""", (self.person_id,)).fetchall()
         self.db.close()
         self.raspisanie = '0razdel0razdel0razdel0razdel0razdel0razdel0'
-        start_keyboard = [['/Registration']]
-        reg_end_keyboard = [['/Menu']]
+        if len(self.result) > 0:
+            shuffle(self.result)
+        self.db.close()
+        self.raspisanie = [0, 0, 0, 0, 0, 0, 0]
         reply_keyboard = [['/Time_to_end', '/Timetable'],
                           ['/Redact', '/Homework'],
                           ['/Subject', '/Repetition', '/Help']]
@@ -35,16 +48,17 @@
         timetable_keyboard = [['/To_Day'], ['/To_Week'],
                               ['/Back']]
         predmet_add = [['/Update', '/Back']]
-        add_question_answer = [['/Input', '/Repetition_start', '/Back']]
+        add_question_answer = [['/Input', '/Repetition_start', '/Delete_test', '/Back']]
+        time_to_end = [['End_of_the_Year', 'Your_data', '/Back']]
+
         self.markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
-        self.markup_start = ReplyKeyboardMarkup(start_keyboard, one_time_keyboard=False)
-        self.markup_end_reg = ReplyKeyboardMarkup(reg_end_keyboard, one_time_keyboard=False)
         self.markup_subj = ReplyKeyboardMarkup(subjects_keyboard, one_time_keyboard=False)
         self.markup_reda = ReplyKeyboardMarkup(redact_keyboard, one_time_keyboard=False)
         self.markup_predmet_add = ReplyKeyboardMarkup(predmet_add, one_time_keyboard=False)
         self.markup_question = ReplyKeyboardMarkup(predmet_add, one_time_keyboard=False)
-        self.markup_timetable = ReplyKeyboardMarkup(timetable_keyboard, one_time_keyboard=False)
         self.markup_repet = ReplyKeyboardMarkup(add_question_answer, one_time_keyboard=False)
+        self.markup_timetable = ReplyKeyboardMarkup(timetable_keyboard, one_time_keyboard=False)
+        self.markup_time_to_end = ReplyKeyboardMarkup(time_to_end, one_time_keyboard=False)
         self.updater = Updater(TOKEN)
         dp = self.updater.dispatcher
         text_handler = MessageHandler(Filters.text & ~Filters.command, self.echo)
@@ -64,24 +78,26 @@
         dp.add_handler(CommandHandler("Biology", self.Biology))
         dp.add_handler(CommandHandler("Geography", self.Geography))
         dp.add_handler(CommandHandler("History", self.History))
-        dp.add_handler(CommandHandler("Back", self.Menu))
-        dp.add_handler(CommandHandler("Menu", self.Menu))
-        dp.add_handler(CommandHandler("Registration", self.Registration_def))
+        dp.add_handler(CommandHandler("Back", self.start))
         dp.add_handler(CommandHandler("Update", self.update))
-        dp.add_handler(CommandHandler("To_Day", self.day_def))
-        dp.add_handler(CommandHandler("To_Week", self.week_def))
         dp.add_handler(CommandHandler("Redact_Timetable", self.add_timetable))
         dp.add_handler(CommandHandler("Input", self.Add_answer_quest))
+        dp.add_handler(CommandHandler("Delete_test", self.Delete_test))
         dp.add_handler(CommandHandler("Repetition_start", self.Repet_formules))
+        dp.add_handler(CommandHandler("To_Day", self.day_def))
+        dp.add_handler(CommandHandler("To_Week", self.week_def))
         self.updater.start_polling()
         self.flag_add_timetable_day = False
         self.flag_add_timetable_predmet = False
         self.flag_add_question = False
         self.flag_add_answer = False
         self.flag_person_ans = False
-        self.flag_day = False
-        self.flag_reg = False
         self.is_answer = False
+        self.ask_for_homework = False
+        self.ask_for_homework2 = False
+        self.flag_day = False
+        self.flag_agree_to_delete = False
+        self.flag_until_your_data = False
         self.ras = []
         self.days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
         self.day = ''
@@ -104,11 +120,22 @@
             self.Add_answer_quest(update, update.message.text)
         elif self.flag_add_answer:
             self.Add_answer_quest(update, update.message.text)
-        elif self.flag_reg:
-            self.Reg(update, update.message.text)
+        elif self.ask_for_homework:
+            self.is_answer = True
+            self.ask_for_homework = False
+            self.Homework_def(update, update.message.text)
+        elif self.ask_for_homework2:
+            self.is_answer = True
+            self.Homework_def(update, update.message.text)
         elif self.flag_day and update.message.text in self.days:
             self.flag_day = False
             self.day_info(update, update.message.text)
+        elif self.flag_agree_to_delete:
+            self.is_answer = True
+            self.Delete_test(update, update.message.text)
+        elif self.flag_until_your_data:
+            self.is_answer = True
+            self.Until_your_data(update, update.message.text)
         else:
             update.message.reply_text("Пожалуйста, введите команду\n:((")
 
@@ -145,29 +172,7 @@
         )
         self.flag_add_timetable_predmet = False
         self.flag_add_timetable_day = False
-        print(self.ras)
-        print(len(self.ras))
-        con = sqlite3.connect("info1.db")
-        cur = con.cursor()
-        self.raspisanie_red = cur.execute('''SELECT raspisanie FROM users_R WHERE id IS (?)''', (self.person_id, )).fetchall()[0][0]
-        self.raspisanie_red = self.raspisanie_red.split('razdel')
-        if len(self.ras) > 1:
-            print("/".join(self.ras))
-            print(self.raspisanie_red[self.days.index(self.day)])
-            self.raspisanie_red[self.days.index(self.day)] = '/'.join(self.ras)
-        elif len(self.ras) == 1:
-            self.raspisanie_red[self.days.index(self.day)] = (str(self.ras[0]))
-        else:
-            update.message.reply_text(
-                f" вы не можете ввести пустой день., напиите прочерк",
-                reply_markup=self.markup_reda
-            )
-        print(self.raspisanie_red)
-        self.db_ras = sqlite3.connect("info1.db")
-        self.sql_ras = self.db_ras.cursor()
-        self.sql_ras.execute("""UPDATE users_R SET raspisanie = (?) WHERE id == (?)""", ('razdel'.join(self.raspisanie_red), self.person_id))
-        self.db_ras.commit()
-        self.db_ras.close()
+        self.raspisanie[self.days.index(self.day)] = self.ras
         self.ras = []
         self.day = ''
 
@@ -188,13 +193,25 @@
 
     def start(self, update, context):
         update.message.reply_text(
-            "Ля ля ля большой ВСТУПИТЕЛЬНЫЙ текст и просьба зарегаться",
-            reply_markup=self.markup_start
+            "Добро пожаловать в телеграмм-бот 'Школьный помощник'! "
+            "Наш бот создан для того чтобы помогать детям учиться и "
+            "организовывать домашнее задание, материалы и учебники."
+            "Здесь вы сможете не только весело провести время, посмотреть количество оставшихся учебных дней, "
+            "быстро найти все свои учебники и домашнее задание, "
+            "но и сможете потренироваться создавая собственные тесты и потом проверяя по ним знания!"
+            "Надеемся, что наш бот будт вам полезным!"
         )
-
-    def Menu(self, update, context):
         update.message.reply_text(
-            " Приветствие Ля ля ля большой текст о способностях",
+            "Правила бота:"
+            "Внимательно читайте все, что пишет вам бот, это поможет не допускать ошибки."
+            "Если у вас возникли проблемы, то нажмите на кнопку '/Help', "
+            "там вы сможете найти более подробное описание всех кнопок и функций."
+            "'/Back' будет возвращать вас назад, поэтому если вы хотите вернуться в предыдущее окно, то нажмите на нее."
+            "Большинство кнопок имеют названия, связанные с функциями бота, за которые они отвечают."
+            "Не волнуйтесь, даже если случайно нажали не туда, "
+            "чаще всего бот будет запрашивать повторное согласие на удаление "
+            "или изменение какой-либо информации или данных."
+            "Удачи!",
             reply_markup=self.markup
         )
 
@@ -206,58 +223,64 @@
 
     def help(self, update, context):
         update.message.reply_text(
-            "Ля ля ля ещё большой текст как в старте")
-
-    def Registration_def(self, update, context):
-        update.message.reply_text(
-            "Введите ник")
-        self.flag_reg = True
-
-    def Reg(self, update, text):
-        con = sqlite3.connect("info1.db")
-        cur = con.cursor()
-        otvet = cur.execute('''SELECT id FROM users''').fetchall()
-        if otvet != []:
-            if text in otvet[0]:
-                update.message.reply_text(
-                    "Ник занят, введите другой")
-            else:
-                self.person_id = text
-                db = sqlite3.connect("info1.db")
-                sql = db.cursor()
-                self.raspisanie = '0razdel0razdel0razdel0razdel0razdel0razdel0'
-                sql.execute(f"""INSERT INTO users (id) VALUES 
-                                            ('{self.person_id}')""")
-                sql.execute(f"""INSERT INTO users_R (id, raspisanie) VALUES 
-                                                                        ('{self.person_id}', '{self.raspisanie}')""")
-
-                print(self.raspisanie)
-                db.commit()
-                update.message.reply_text(
-                    f"Вы зарегистрировались под ником {text}", reply_markup=self.markup_end_reg)
-                self.flag_reg = False
-        else:
-            self.person_id = text
-            db = sqlite3.connect("info1.db")
-            sql = db.cursor()
-            self.raspisanie = '0razdel0razdel0razdel0razdel0razdel0razdel0'
-            sql.execute(f"""INSERT INTO users (id) VALUES 
-                                                        ('{self.person_id}')""")
-            sql.execute(f"""INSERT INTO users_R (id, raspisanie) VALUES 
-                                                                ('{self.person_id}', '{self.raspisanie}')""")
-
-            print(self.raspisanie)
-            db.commit()
-            update.message.reply_text(
-                f"Вы зарегистрировались под ником {text}", reply_markup=self.markup_end_reg)
-            self.flag_reg = False
+            "Если вам нужна помощь по работе с ботом, "
+            "то прочитайте последующую инструкцию, возможна она сможет помочь вам решить вашу проблему.\n"
+            ""
+            "1. Если внизу экрана появились кнопки, то не стоит ничего писать боту, "
+            "кроме случаев когда он просит ввести текст, сообщение с просьбой вы увидите во входящих сообщениях.\n"
+            "2.Кнопка Back отвечает за возврат на предыдущее меню, "
+            "поэтому дочитав эту инструкцию или доработав с ботом, вы можете вернуться нажам в на кнопку.\n"
+            "3.Основное меню и его кнопки:\n"
+            "Time_to_end - расскажет сколько времени осталось учиться на выбор: по введенной дате или до конца года.\n"
+            "Timetable - Здесь вы сможете посмотреть свое расписание по дню недели, числу.\n"
+            "Redact - Здесь вы сможете изменюить некоторую свою информацию. Например, расписание.\n"
+            "Homework - Здесь вы сможете ввести домашнее задание на определенный день и предмет.\n"
+            "Subject - Здесь вы сможете быстро получить ссылки на учебники по вашим предметам.\n"
+            "Repetition - Здесь вы сможете сделать тест, "
+            "а потом проверить себя же на своих вопросах, "
+            "и таким образом закрепить материал или подготовиться к контрольной.\n"
+            "Help - Сейчас вы находитесь здесь.")
 
     def Timetable_def(self, update, context):
         update.message.reply_text(
-            "Выдаёт расписание: всё, по дню недели"
-            "Проверить наличие дз на число", reply_markup=self.markup_timetable)
+            "Выдаёт расписание: всё, по дню недели, числу"
+            "Проверить наличие дз на число", reply_markup = self.markup_timetable)
+        con = sqlite3.connect("info1.db")
+        cur = con.cursor()
+        otvet = cur.execute('''SELECT raspisanie FROM users_R WHERE id IS (?)''', (self.person_id,)).fetchall()
+        print(self.person_id, otvet)
+        sms = otvet[0][0].split('razdel')
+        for i in range(len(sms)):
+            s = str(self.days[i]) + ': \n' + str("\n".join(sms[i].split('/')))
+            update.message.reply_text(s)
+        con.close()
 
     def Time_to_end_def(self, update, context):
+        update.message.reply_text("Предлагает выбрать: до конца года(установленное значение), до введённой даты "
+                                  "АЙПИ ссылка на официальный сайт МИНобразования",
+                                  reply_markup=self.markup_time_to_end)
+
+    def Until_your_data(self, update, context):
+        if self.is_answer is False:
+            update.message.reply_text("Здесь вы можете посмотреть сколько осталось учиться до введенной даты."
+                                      "Введите дату (ДД.ММ.ГГГГ)")
+            self.flag_until_your_data = True
+        else:
+            self.text = context.split(' ')
+            if len(self.text) < 2:
+                update.message.reply_text("Вы неправильно ввели дату!"
+                                          "Введите дату (пример: 23.09.2006).")
+                self.flag_until_your_data = True
+                self.is_answer = False
+            elif self.text[0].count('.') != 2 or len(self.text[0]) != 10:
+                update.message.reply_text("Вы неправильно ввели дату!"
+                                          "Введите дату (пример: 23.09.2006).")
+                self.flag_until_your_data = True
+                self.is_answer = False
+            else:
+                pass
+
+    def Until_end(self, update, context):
         update.message.reply_text("Предлагает выбрать: до конца года(установленное значение), до введённой даты "
                                   "АЙПИ ссылка на официальный сайт МИНобразования")
 
@@ -273,15 +296,32 @@
         self.flag_add_timetable_day = True
 
     def Homework_def(self, update, context):
-        update.message.reply_text(
-            "Спрашивает число предмет, если в тот день нет данного предмета"
-            " предупреждает и предлагает перенести на ближайшее число ")
+        if self.is_answer is False:
+            update.message.reply_text(
+                "Спрашивает число предмет, если в тот день нет данного предмета"
+                " предупреждает и предлагает перенести на ближайшее число ")
+            update.message.reply_text(
+                "Введите дату(ДД.MM.ГГГГ) и предмет через пробел")
+            self.ask_for_homework = True
+        else:
+            if self.ask_for_homework2 is False:
+                self.text = context.split(' ')
+                if len(self.text) < 2:
+                    pass
+                elif self.text[0].count('.') != 2 or len(self.text[0]) != 10:
+                    pass
+                else:
+                    update.message.reply_text(
+                        "Введите домашнее задание")
+                    self.ask_for_homework2 = True
+            else:
+                pass
 
     def Repetition_def(self, update, context):
         update.message.reply_text(
-            "Предлагает записать вопросы в виде вопрос-ответ, или же повторить формулы"
-            " (берет из БД в зависимости от класса человека)"
-            "Далее выдаёт по одному вопросы и считает результат в процентах",
+            "Здесь вы моежет создать свой собственный тест(кнопка Input), "
+            "а потом потренироваться(кнопка Repetition_start) и сразу увидеть резульатат"
+            "А также удалить свой предыдущий тест(кнопка Delete_test)",
             reply_markup=self.markup_repet
         )
 
@@ -305,8 +345,12 @@
                             ('{self.person_id}', '{self.q_a[0]}', '{self.q_a[1]}')""")
             self.db.commit()
             self.result = self.sql.execute("""SELECT * FROM users_Repetition WHERE id = ?""", (self.person_id,)).fetchall()
+            if len(self.result) > 0:
+                shuffle(self.result)
             self.db.close()
             self.q_a = []
+            update.message.reply_text(
+                "Ваш вопрос записан! Чтобы добавить новый вопрос, нажмите на кнопку Input")
 
     def Repet_formules(self, update, context):
         if self.i < len(self.result):
@@ -350,10 +394,35 @@
                 f"Вы получили {str(self.sum_b)} из {str(len(self.result))}!")
             self.i = 0
             self.sum_b = 0
+            shuffle(self.result)
+            self.is_answer = False
+
+    def Delete_test(self, update, context):
+        if self.is_answer is False:
+            update.message.reply_text(
+                "Здесь вы можете удалить свой старый тест. "
+                "Напишите 'Да', если согласны, и любое другое слово, если хотите отменить удаление")
+            self.flag_agree_to_delete = True
+        else:
+            if context == 'Да':
+                self.flag_agree_to_delete = False
+                self.result.clear()
+                self.db = sqlite3.connect("info1.db")
+                self.sql = self.db.cursor()
+                self.sql.execute(f"""DELETE from users_Repetition where id = '{self.person_id}'""")
+                self.db.commit()
+                self.db.close()
+                update.message.reply_text(
+                    "Ваш тест удален! Вы можете составить новый тест")
+            else:
+                self.flag_agree_to_delete = False
+                update.message.reply_text(
+                    "Ваш тест не был удален!")
+            self.is_answer = False
 
     def Subject_def(self, update, context):
         update.message.reply_text(
-            "Ля",
+            "Здесь вы можете получить ссылки на учебники, для этого нажмите на кнопку с нужным предметом",
             reply_markup=self.markup_subj
         )
 
@@ -386,3 +455,7 @@
     def History(self, update, context):
         update.message.reply_text(
             "Ваш учебник по всеобщей истории: https://school-textbook.com/vsemirnaya-istoriya/12083-vseobschaya-istoriya-xx-nachalo-xxi-veka-9-klass-aleksashkina-ln.html")
+
+
+if __name__ == '__main__':
+    Menu()
