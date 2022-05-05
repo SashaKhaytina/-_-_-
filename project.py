@@ -1,8 +1,9 @@
+import logging
+
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
 import time
 import sqlite3
-
 
 TOKEN = '5219235474:AAG4SluLc6f44WVFK8KlOnZlRkgXsEK8IJI'
 
@@ -10,16 +11,29 @@ TOKEN = '5219235474:AAG4SluLc6f44WVFK8KlOnZlRkgXsEK8IJI'
 class Menu:
     def __init__(self):
         self.person_id = '1'
-        self.db = sqlite3.connect("info.db")
+        self.db = sqlite3.connect("info1.db")
         self.sql = self.db.cursor()
-        self.sql.execute("""CREATE TABLE IF NOT EXISTS users(
+        self.sql.execute("""CREATE TABLE IF NOT EXISTS users_Repetition(
                     id TEXT,
                     question TEXT,
                     answer TEXT)""")
         self.db.commit()
+        self.db_ras = sqlite3.connect("info1.db")
+        self.sql_ras = self.db_ras.cursor()
+        self.sql_ras.execute("""CREATE TABLE IF NOT EXISTS users_R(
+                            id TEXT,
+                            raspisanie TEXT)""")
+        self.db_ras.commit()
+        self.db_user = sqlite3.connect("info1.db")
+        self.sql_user = self.db_user.cursor()
+        self.sql_user.execute("""CREATE TABLE IF NOT EXISTS users(
+                                    id TEXT)""")
+        self.db_user.commit()
         self.result = self.sql.execute("""SELECT * FROM users WHERE id = ?""", (self.person_id,)).fetchall()
         self.db.close()
-        self.raspisanie = [0, 0, 0, 0, 0, 0, 0]
+        self.raspisanie = ['0', '0', '0', '0', '0', '0', '0']
+        start_keyboard = [['/Registration']]
+        reg_end_keyboard = [['/Menu']]
         reply_keyboard = [['/Time_to_end', '/Timetable'],
                           ['/Redact', '/Homework'],
                           ['/Subject', '/Repetition', '/Help']]
@@ -31,8 +45,9 @@ class Menu:
                              ['/Back']]
         predmet_add = [['/Update', '/Back']]
         add_question_answer = [['/Input', '/Repetition_start', '/Back']]
-
         self.markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
+        self.markup_start = ReplyKeyboardMarkup(start_keyboard, one_time_keyboard=False)
+        self.markup_end_reg = ReplyKeyboardMarkup(reg_end_keyboard, one_time_keyboard=False)
         self.markup_subj = ReplyKeyboardMarkup(subjects_keyboard, one_time_keyboard=False)
         self.markup_reda = ReplyKeyboardMarkup(redact_keyboard, one_time_keyboard=False)
         self.markup_predmet_add = ReplyKeyboardMarkup(predmet_add, one_time_keyboard=False)
@@ -57,7 +72,9 @@ class Menu:
         dp.add_handler(CommandHandler("Biology", self.Biology))
         dp.add_handler(CommandHandler("Geography", self.Geography))
         dp.add_handler(CommandHandler("History", self.History))
-        dp.add_handler(CommandHandler("Back", self.start))
+        dp.add_handler(CommandHandler("Back", self.Menu))
+        dp.add_handler(CommandHandler("Menu", self.Menu))
+        dp.add_handler(CommandHandler("Registration", self.Registration_def))
         dp.add_handler(CommandHandler("Update", self.update))
         dp.add_handler(CommandHandler("Redact_Timetable", self.add_timetable))
         dp.add_handler(CommandHandler("Input", self.Add_answer_quest))
@@ -68,6 +85,7 @@ class Menu:
         self.flag_add_question = False
         self.flag_add_answer = False
         self.flag_person_ans = False
+        self.flag_reg = False
         self.is_answer = False
         self.ras = []
         self.days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
@@ -91,6 +109,8 @@ class Menu:
             self.Add_answer_quest(update, update.message.text)
         elif self.flag_add_answer:
             self.Add_answer_quest(update, update.message.text)
+        elif self.flag_reg:
+            self.Reg(update, update.message.text)
         else:
             update.message.reply_text("Пожалуйста, введите команду\n:((")
 
@@ -116,13 +136,25 @@ class Menu:
         )
         self.flag_add_timetable_predmet = False
         self.flag_add_timetable_day = False
-        self.raspisanie[self.days.index(self.day)] = self.ras
+        self.raspisanie[self.days.index(self.day)] = "/".join(self.ras)
+        self.db_ras = sqlite3.connect("info1.db")
+        self.sql_ras = self.db_ras.cursor()
+        self.sql_ras.execute(f"""INSERT INTO users_R (id, raspisanie) VALUES 
+                                    ('{self.person_id}', '{'razdel'.join(self.raspisanie)}')""")
+        self.db_ras.commit()
+        self.db_ras.close()
         self.ras = []
         self.day = ''
 
     def start(self, update, context):
         update.message.reply_text(
-            "Ля ля ля большой текст о способностях",
+            "Ля ля ля большой ВСТУПИТЕЛЬНЫЙ текст и просьба зарегаться",
+            reply_markup=self.markup_start
+        )
+
+    def Menu(self, update, context):
+        update.message.reply_text(
+            " Приветствие Ля ля ля большой текст о способностях",
             reply_markup=self.markup
         )
 
@@ -136,10 +168,52 @@ class Menu:
         update.message.reply_text(
             "Ля ля ля ещё большой текст как в старте")
 
+    def Registration_def(self, update, context):
+        update.message.reply_text(
+            "Введите ник")
+        self.flag_reg = True
+
+    def Reg(self, update, text):
+        con = sqlite3.connect("info1.db")
+        cur = con.cursor()
+        otvet = cur.execute('''SELECT id FROM users''').fetchall()
+        if otvet != []:
+            if text in otvet[0]:
+                update.message.reply_text(
+                    "Ник занят, введите другой")
+            else:
+                self.person_id = text
+                db = sqlite3.connect("info1.db")
+                sql = db.cursor()
+                sql.execute(f"""INSERT INTO users (id) VALUES 
+                                            ('{self.person_id}')""")
+                db.commit()
+                update.message.reply_text(
+                    f"Вы зарегестрировались под ником {text}", reply_markup=self.markup_end_reg)
+                self.flag_reg = False
+        else:
+            self.person_id = text
+            db = sqlite3.connect("info1.db")
+            sql = db.cursor()
+            sql.execute(f"""INSERT INTO users (id) VALUES 
+                                                        ('{self.person_id}')""")
+            db.commit()
+            update.message.reply_text(
+                f"Вы зарегестрировались под ником {text}", reply_markup=self.markup_end_reg)
+            self.flag_reg = False
+
     def Timetable_def(self, update, context):
         update.message.reply_text(
             "Выдаёт расписание: всё, по дню недели, числу"
             "Проверить наличие дз на число")
+        con = sqlite3.connect("info1.db")
+        cur = con.cursor()
+        otvet = cur.execute('''SELECT raspisanie FROM users_R WHERE id IS (?)''', (self.person_id, )).fetchall()
+        sms = otvet[0][0].split('razdel')
+        for i in range(len(sms)):
+            s = str(self.days[i]) + ': \n' + str("\n".join(sms[i].split('/')))
+            update.message.reply_text(s)
+        con.close()
 
     def Time_to_end_def(self, update, context):
         update.message.reply_text("Предлагает выбрать: до конца года(установленное значение), до введённой даты "
@@ -183,12 +257,12 @@ class Menu:
         else:
             self.q_a.append(text)
             self.flag_add_answer = False
-            self.db = sqlite3.connect("info.db")
+            self.db = sqlite3.connect("info1.db")
             self.sql = self.db.cursor()
-            self.sql.execute(f"""INSERT INTO users (id, question, answer) VALUES 
+            self.sql.execute(f"""INSERT INTO users_Repetition (id, question, answer) VALUES 
                             ('{self.person_id}', '{self.q_a[0]}', '{self.q_a[1]}')""")
             self.db.commit()
-            self.result = self.sql.execute("""SELECT * FROM users WHERE id = ?""", (self.person_id,)).fetchall()
+            self.result = self.sql.execute("""SELECT * FROM users_Repetition WHERE id = ?""", (self.person_id,)).fetchall()
             self.db.close()
             self.q_a = []
 
@@ -274,8 +348,3 @@ class Menu:
 
 if __name__ == '__main__':
     Menu()
-    #try:
-    #    Menu()
-    #except Exception as e:
-    #    print(e)  # или import traceback; traceback.print_exc() для печати полной инфы
-    #    time.sleep(15)
