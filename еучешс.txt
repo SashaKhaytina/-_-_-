@@ -1,0 +1,240 @@
+#основной класс телеграмм-бота
+class Menu:
+    #Инициализация, открытие или создание бд, основные перменные
+    def __init__(self):
+        self.person_id = '1'
+        self.db = sqlite3.connect("info1.db")
+        self.sql = self.db.cursor()
+        self.sql.execute("""CREATE TABLE IF NOT EXISTS users_Repetition(
+                            id TEXT,
+                            question TEXT,
+                            answer TEXT)""")
+        self.db.commit()
+        self.db_ras = sqlite3.connect("info1.db")
+        self.sql_ras = self.db_ras.cursor()
+        self.sql_ras.execute("""CREATE TABLE IF NOT EXISTS users_R(
+                                    id TEXT,
+                                    raspisanie TEXT)""")
+        self.db_ras.commit()
+        self.db_user = sqlite3.connect("info1.db")
+        self.sql_user = self.db_user.cursor()
+        self.sql_user.execute("""CREATE TABLE IF NOT EXISTS users(
+                                            id TEXT)""")
+        self.db_user.commit()
+        self.result = self.sql.execute("""SELECT * FROM users WHERE id = ?""", (self.person_id,)).fetchall()
+        self.db.close()
+        self.raspisanie = '0razdel0razdel0razdel0razdel0razdel0razdel0'
+        if len(self.result) > 0:
+            shuffle(self.result)
+        self.db.close()
+        self.raspisanie = [0, 0, 0, 0, 0, 0, 0]
+        reply_keyboard = [['/Time_to_end', '/Timetable'],
+                          ['/Redact', '/Subject'],
+                          ['/Repetition', '/Help']]
+        redact_keyboard = [['/Redact_Timetable'],
+                           ['/Back']]
+        subjects_keyboard = [['/Math', '/Russian'],
+                             ['/Biology', '/Chemistry'],
+                             ['/Geography', '/History'],
+                             ['/Back']]
+        timetable_keyboard = [['/To_Day'], ['/To_Week'],
+                              ['/Back']]
+        predmet_add = [['/Update', '/Back']]
+        add_question_answer = [['/Input', '/Repetition_start', '/Delete_test', '/Back']]
+        time_to_end = [['/End_of_the_Year', '/Your_data', '/Back']]
+
+        self.markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
+        self.markup_subj = ReplyKeyboardMarkup(subjects_keyboard, one_time_keyboard=False)
+        self.markup_reda = ReplyKeyboardMarkup(redact_keyboard, one_time_keyboard=False)
+        self.markup_predmet_add = ReplyKeyboardMarkup(predmet_add, one_time_keyboard=False)
+        self.markup_question = ReplyKeyboardMarkup(predmet_add, one_time_keyboard=False)
+        self.markup_repet = ReplyKeyboardMarkup(add_question_answer, one_time_keyboard=False)
+        self.markup_timetable = ReplyKeyboardMarkup(timetable_keyboard, one_time_keyboard=False)
+        self.markup_time_to_end = ReplyKeyboardMarkup(time_to_end, one_time_keyboard=False)
+        self.updater = Updater(TOKEN)
+        dp = self.updater.dispatcher
+        text_handler = MessageHandler(Filters.text & ~Filters.command, self.echo)
+        dp.add_handler(text_handler)
+        dp.add_handler(CommandHandler("start", self.start))
+        dp.add_handler(CommandHandler("Time_to_end", self.Time_to_end_def))
+        dp.add_handler(CommandHandler("Your_data", self.Until_your_data))
+        dp.add_handler(CommandHandler("End_of_the_Year", self.Until_end))
+        dp.add_handler(CommandHandler("Timetable", self.Timetable_def))
+        dp.add_handler(CommandHandler("Redact", self.Redact_def))
+        dp.add_handler(CommandHandler("Subject", self.Subject_def))
+        dp.add_handler(CommandHandler("Repetition", self.Repetition_def))
+        dp.add_handler(CommandHandler("Help", self.help))
+        dp.add_handler(CommandHandler("close", self.close_keyboard))
+        dp.add_handler(CommandHandler("Math", self.Math))
+        dp.add_handler(CommandHandler("Russian", self.Russian))
+        dp.add_handler(CommandHandler("Chemistry", self.Chemistry))
+        dp.add_handler(CommandHandler("Biology", self.Biology))
+        dp.add_handler(CommandHandler("Geography", self.Geography))
+        dp.add_handler(CommandHandler("History", self.History))
+        dp.add_handler(CommandHandler("Back", self.start))
+        dp.add_handler(CommandHandler("Update", self.update))
+        dp.add_handler(CommandHandler("Redact_Timetable", self.add_timetable))
+        dp.add_handler(CommandHandler("Input", self.Add_answer_quest))
+        dp.add_handler(CommandHandler("Delete_test", self.Delete_test))
+        dp.add_handler(CommandHandler("Repetition_start", self.Repet_formules))
+        dp.add_handler(CommandHandler("To_Day", self.day_def))
+        dp.add_handler(CommandHandler("To_Week", self.week_def))
+        self.updater.start_polling()
+        self.flag_add_timetable_day = False
+        self.flag_add_timetable_predmet = False
+        self.flag_add_question = False
+        self.flag_add_answer = False
+        self.flag_person_ans = False
+        self.is_answer = False
+        self.ask_for_homework = False
+        self.ask_for_homework2 = False
+        self.flag_day = False
+        self.flag_agree_to_delete = False
+        self.flag_until_your_data = False
+        self.ras = []
+        self.days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
+        self.day = ''
+        self.q_a = []
+        self.i = 0
+        self.sum_b = 0
+        self.updater.idle()
+
+    #Эхо-функция, считывает пользовательский ввод
+    def echo(self, update, context):
+        if update.message.text in self.days and self.flag_add_timetable_day:
+            self.day = update.message.text
+            self.day_add(update, self.day)
+            self.flag_add_timetable_day = False
+        elif self.flag_add_timetable_predmet:
+            self.predmet_add(update, update.message.text)
+        elif self.flag_person_ans:
+            self.is_answer = True
+            self.Repet_formules(update, update.message.text)
+        elif self.flag_add_question:
+            self.Add_answer_quest(update, update.message.text)
+        elif self.flag_add_answer:
+            self.Add_answer_quest(update, update.message.text)
+        elif self.flag_day and update.message.text in self.days:
+            self.flag_day = False
+            self.day_info(update, update.message.text)
+        elif self.flag_agree_to_delete:
+            self.is_answer = True
+            self.Delete_test(update, update.message.text)
+        elif self.flag_until_your_data:
+            self.is_answer = True
+            self.Until_your_data(update, update.message.text)
+        else:
+            update.message.reply_text("Пожалуйста, введите команду\n:((")
+
+    # Функция, для изменения расписания, добавления новых предметов
+    def day_add(self, update, day):
+        update.message.reply_text(
+            f"Вы выбрали день {day}.Напишите расписание уроков, начиная с первого(если есть окно или"
+            f" уроки начинаются не с первого отправьте '-') в конце отправьте 'Update'. Выход сбросит изменения",
+            reply_markup=self.markup_predmet_add
+        )
+        self.flag_add_timetable_predmet = True
+
+    #функция, которая выводит расписание на день
+    def day_info(self, update, day):
+        con = sqlite3.connect("info1.db")
+        cur = con.cursor()
+        otvet = cur.execute('''SELECT raspisanie FROM users_R WHERE id IS (?)''', (self.person_id,)).fetchall()
+        print(self.person_id, otvet)
+        sms = otvet[0][0].split('razdel')
+        i = self.days.index(day)
+        s = str(self.days[i]) + ': \n' + str("\n".join(sms[i].split('/')))
+        update.message.reply_text(s, reply_markup=self.markup_timetable)
+        con.close()
+
+    #побочная функция
+    def predmet_add(self, update, s):
+        update.message.reply_text(
+            f"Вы выбрали предмет {s}. Продолжайте...",
+            reply_markup=self.markup_predmet_add
+        )
+        self.ras.append(update.message.text)
+
+    #совершает вношение изенений в расписание
+    def update(self, update, context):
+        update.message.reply_text(
+            f"Вы сохранили день {self.day}!",
+            reply_markup=self.markup_reda
+        )
+        self.flag_add_timetable_predmet = False
+        self.flag_add_timetable_day = False
+        self.raspisanie[self.days.index(self.day)] = self.ras
+        self.ras = []
+        self.day = ''
+
+    # функция выводит расписание на неделю
+    def week_def(self, update, context):
+        con = sqlite3.connect("info1.db")
+        cur = con.cursor()
+        otvet = cur.execute('''SELECT raspisanie FROM users_R WHERE id IS (?)''', (self.person_id,)).fetchall()
+        print(self.person_id, otvet)
+        sms = otvet[0][0].split('razdel')
+        for i in range(len(sms)):
+            s = str(self.days[i]) + ': \n' + str("\n".join(sms[i].split('/')))
+            update.message.reply_text(s, reply_markup=self.markup_timetable)
+        con.close()
+
+    #вспомогательная функция спрашивает день недели
+    def day_def(self, update, context):
+
+    #стартовая функция, выводит текст о боте, знакомство def start
+
+
+    #функция закрывает клавиатуру
+    def close_keyboard(self, update, context):
+
+    #функция кнопки help, нужна для помощи пользователю
+    def help(self, update, context):
+
+    #функция кнопки timetable, показывает расписание и выбор кнопок
+    def Timetable_def(self, update, context):
+
+    #функция кнопки time to end, здесь вы можете посмотреть сколько осталось дней до определенной даты
+    def Time_to_end_def(self, update, context):
+
+
+    #функция, показывающая сколько осталось дней до введенной даты
+    def Until_your_data(self, update, context):
+
+
+    #функция, показывающая сколько осталось до конца лета или года в зависимости от месяца
+    def Until_end(self, update, context):
+
+	
+    #функция кнопки redact
+    def Redact_def(self, update, context):
+        update.message.reply_text(
+            "Здесь вы можете изменить расписание",
+            reply_markup=self.markup_reda
+        )
+
+    #побочная функция
+    def add_timetable(self, update, context):
+        update.message.reply_text(
+            "Напишите день недели")
+        self.flag_add_timetable_day = True
+
+    #функция кнопки repetition, для своих тестов и самопроверки
+    def Repetition_def(self, update, context):
+
+
+    #функция для записи новых тестов
+    def Add_answer_quest(self, update, text):
+
+
+    #функция для повторения изученных материалов по вопросам
+    def Repet_formules(self, update, context):
+
+
+    #функция для удаления предыдущего теста
+    def Delete_test(self, update, context):
+        
+
+    #функция для показа ссылок на учебники
+    def Subject_def(self, update, context):
+       
