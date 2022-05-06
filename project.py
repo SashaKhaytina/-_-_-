@@ -3,6 +3,7 @@ from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
 import time
 from random import shuffle
 import sqlite3
+import datetime as dt
 
 
 TOKEN = '5219235474:AAG4SluLc6f44WVFK8KlOnZlRkgXsEK8IJI'
@@ -37,8 +38,8 @@ class Menu:
         self.db.close()
         self.raspisanie = [0, 0, 0, 0, 0, 0, 0]
         reply_keyboard = [['/Time_to_end', '/Timetable'],
-                          ['/Redact', '/Homework'],
-                          ['/Subject', '/Repetition', '/Help']]
+                          ['/Redact', '/Subject'],
+                          ['/Repetition', '/Help']]
         redact_keyboard = [['/Redact_Timetable'],
                            ['/Back']]
         subjects_keyboard = [['/Math', '/Russian'],
@@ -49,7 +50,7 @@ class Menu:
                               ['/Back']]
         predmet_add = [['/Update', '/Back']]
         add_question_answer = [['/Input', '/Repetition_start', '/Delete_test', '/Back']]
-        time_to_end = [['End_of_the_Year', 'Your_data', '/Back']]
+        time_to_end = [['/End_of_the_Year', '/Your_data', '/Back']]
 
         self.markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
         self.markup_subj = ReplyKeyboardMarkup(subjects_keyboard, one_time_keyboard=False)
@@ -65,9 +66,10 @@ class Menu:
         dp.add_handler(text_handler)
         dp.add_handler(CommandHandler("start", self.start))
         dp.add_handler(CommandHandler("Time_to_end", self.Time_to_end_def))
+        dp.add_handler(CommandHandler("Your_data", self.Until_your_data))
+        dp.add_handler(CommandHandler("End_of_the_Year", self.Until_end))
         dp.add_handler(CommandHandler("Timetable", self.Timetable_def))
         dp.add_handler(CommandHandler("Redact", self.Redact_def))
-        dp.add_handler(CommandHandler("Homework", self.Homework_def))
         dp.add_handler(CommandHandler("Subject", self.Subject_def))
         dp.add_handler(CommandHandler("Repetition", self.Repetition_def))
         dp.add_handler(CommandHandler("Help", self.help))
@@ -120,13 +122,6 @@ class Menu:
             self.Add_answer_quest(update, update.message.text)
         elif self.flag_add_answer:
             self.Add_answer_quest(update, update.message.text)
-        elif self.ask_for_homework:
-            self.is_answer = True
-            self.ask_for_homework = False
-            self.Homework_def(update, update.message.text)
-        elif self.ask_for_homework2:
-            self.is_answer = True
-            self.Homework_def(update, update.message.text)
         elif self.flag_day and update.message.text in self.days:
             self.flag_day = False
             self.day_info(update, update.message.text)
@@ -244,7 +239,7 @@ class Menu:
     def Timetable_def(self, update, context):
         update.message.reply_text(
             "Выдаёт расписание: всё, по дню недели, числу"
-            "Проверить наличие дз на число", reply_markup = self.markup_timetable)
+            "Проверить наличие дз на число", reply_markup=self.markup_timetable)
         con = sqlite3.connect("info1.db")
         cur = con.cursor()
         otvet = cur.execute('''SELECT raspisanie FROM users_R WHERE id IS (?)''', (self.person_id,)).fetchall()
@@ -256,33 +251,50 @@ class Menu:
         con.close()
 
     def Time_to_end_def(self, update, context):
-        update.message.reply_text("Предлагает выбрать: до конца года(установленное значение), до введённой даты "
-                                  "АЙПИ ссылка на официальный сайт МИНобразования",
+        update.message.reply_text("Здесь вы можете посмотреть сколько осталось дней до конца года или лета."
+                                  "Или до введенной даты",
                                   reply_markup=self.markup_time_to_end)
 
     def Until_your_data(self, update, context):
         if self.is_answer is False:
-            update.message.reply_text("Здесь вы можете посмотреть сколько осталось учиться до введенной даты."
+            update.message.reply_text("Здесь вы можете посмотреть сколько осталось дней до введенной даты."
                                       "Введите дату (ДД.ММ.ГГГГ)")
             self.flag_until_your_data = True
         else:
-            self.text = context.split(' ')
+            self.text = context.split('.')
             if len(self.text) < 2:
                 update.message.reply_text("Вы неправильно ввели дату!"
                                           "Введите дату (пример: 23.09.2006).")
                 self.flag_until_your_data = True
                 self.is_answer = False
-            elif self.text[0].count('.') != 2 or len(self.text[0]) != 10:
+            elif context.count('.') != 2 or len(context) != 10:
                 update.message.reply_text("Вы неправильно ввели дату!"
                                           "Введите дату (пример: 23.09.2006).")
                 self.flag_until_your_data = True
                 self.is_answer = False
             else:
-                pass
+                if self.text[0].isdigit() and self.text[1].isdigit() and self.text[2].isdigit():
+                    your_date = dt.date(int(self.text[2]), int(self.text[1]), int(self.text[0]))
+                    now_date = dt.date.today()
+                    if your_date > now_date:
+                        update.message.reply_text(f"До {context} осталось {(your_date - now_date).days} days!")
+                    self.flag_until_your_data = True
+                    self.is_answer = False
+                else:
+                    update.message.reply_text("Вы неправильно ввели дату!"
+                                              "Введите дату (пример: 23.09.2006).")
+                    self.flag_until_your_data = True
+                    self.is_answer = False
 
     def Until_end(self, update, context):
-        update.message.reply_text("Предлагает выбрать: до конца года(установленное значение), до введённой даты "
-                                  "АЙПИ ссылка на официальный сайт МИНобразования")
+        now_date = dt.date.today()
+        a = now_date.year + 1 if now_date.month > 8 else now_date.year
+        your_date = dt.date(a, 5, 31)
+        if 5 < your_date.month < 9:
+            your_date = dt.date(now_date.year, 8, 31)
+            update.message.reply_text(f"До конца лета осталось {(your_date - now_date).days} days!")
+        else:
+            update.message.reply_text(f"До конца года осталось {(your_date - now_date).days} days!")
 
     def Redact_def(self, update, context):
         update.message.reply_text(
@@ -294,28 +306,6 @@ class Menu:
         update.message.reply_text(
             "Напишите день недели")
         self.flag_add_timetable_day = True
-
-    def Homework_def(self, update, context):
-        if self.is_answer is False:
-            update.message.reply_text(
-                "Спрашивает число предмет, если в тот день нет данного предмета"
-                " предупреждает и предлагает перенести на ближайшее число ")
-            update.message.reply_text(
-                "Введите дату(ДД.MM.ГГГГ) и предмет через пробел")
-            self.ask_for_homework = True
-        else:
-            if self.ask_for_homework2 is False:
-                self.text = context.split(' ')
-                if len(self.text) < 2:
-                    pass
-                elif self.text[0].count('.') != 2 or len(self.text[0]) != 10:
-                    pass
-                else:
-                    update.message.reply_text(
-                        "Введите домашнее задание")
-                    self.ask_for_homework2 = True
-            else:
-                pass
 
     def Repetition_def(self, update, context):
         update.message.reply_text(
