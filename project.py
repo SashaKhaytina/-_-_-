@@ -1,6 +1,5 @@
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler
-from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
-import time
+from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, InputMediaPhoto
 from random import shuffle
 import sqlite3
 import datetime as dt
@@ -9,7 +8,9 @@ import datetime as dt
 TOKEN = '5219235474:AAG4SluLc6f44WVFK8KlOnZlRkgXsEK8IJI'
 
 
+#основной класс телеграмм-бота
 class Menu:
+    #Инициализация, открытие или создание бд, основные перменные
     def __init__(self):
         self.person_id = '1'
         self.db = sqlite3.connect("info1.db")
@@ -108,6 +109,7 @@ class Menu:
         self.sum_b = 0
         self.updater.idle()
 
+    #Эхо-функция, считывает пользовательский ввод
     def echo(self, update, context):
         if update.message.text in self.days and self.flag_add_timetable_day:
             self.day = update.message.text
@@ -134,14 +136,16 @@ class Menu:
         else:
             update.message.reply_text("Пожалуйста, введите команду\n:((")
 
+    # Функция, для изменения расписания, добавления новых предметов
     def day_add(self, update, day):
         update.message.reply_text(
-            f"Ля ля ля, вы выбрали день {day}.Напишите расписание уроков, начиная с первого(если есть окно или"
-            f" уроки начинаются не с первого отправьте '-') в конце отправьте 'Update'. выход сбросит изменения",
+            f"Вы выбрали день {day}.Напишите расписание уроков, начиная с первого(если есть окно или"
+            f" уроки начинаются не с первого отправьте '-') в конце отправьте 'Update'. Выход сбросит изменения",
             reply_markup=self.markup_predmet_add
         )
         self.flag_add_timetable_predmet = True
 
+    #функция, которая выводит расписание на день
     def day_info(self, update, day):
         con = sqlite3.connect("info1.db")
         cur = con.cursor()
@@ -153,16 +157,18 @@ class Menu:
         update.message.reply_text(s, reply_markup=self.markup_timetable)
         con.close()
 
+    #побочная функция
     def predmet_add(self, update, s):
         update.message.reply_text(
-            f"Ля ля ля, вы выбрали предмет {s}. продолжайте",
+            f"Вы выбрали предмет {s}. Продолжайте...",
             reply_markup=self.markup_predmet_add
         )
         self.ras.append(update.message.text)
 
+    #совершает вношение изенений в расписание
     def update(self, update, context):
         update.message.reply_text(
-            f" вы сохранили день {self.day} за текст в сообщенях отвечаю не я))",
+            f"Вы сохранили день {self.day}!",
             reply_markup=self.markup_reda
         )
         self.flag_add_timetable_predmet = False
@@ -171,6 +177,7 @@ class Menu:
         self.ras = []
         self.day = ''
 
+    # функция выводит расписание на неделю
     def week_def(self, update, context):
         con = sqlite3.connect("info1.db")
         cur = con.cursor()
@@ -182,10 +189,12 @@ class Menu:
             update.message.reply_text(s, reply_markup=self.markup_timetable)
         con.close()
 
+    #вспомогательная функция спрашивает день недели
     def day_def(self, update, context):
         update.message.reply_text("Введите день недели", reply_markup=self.markup_timetable)
         self.flag_day = True
 
+    #стартовая функция, выводит текст о боте, знакомство
     def start(self, update, context):
         update.message.reply_text(
             "Добро пожаловать в телеграмм-бот 'Школьный помощник'! "
@@ -210,12 +219,14 @@ class Menu:
             reply_markup=self.markup
         )
 
+    #функция закрывает клавиатуру
     def close_keyboard(self, update, context):
         update.message.reply_text(
             "Ok",
             reply_markup=ReplyKeyboardRemove()
         )
 
+    #функция кнопки help, нужна для помощи пользователю
     def help(self, update, context):
         update.message.reply_text(
             "Если вам нужна помощь по работе с ботом, "
@@ -236,10 +247,11 @@ class Menu:
             "и таким образом закрепить материал или подготовиться к контрольной.\n"
             "Help - Сейчас вы находитесь здесь.")
 
+    #функция кнопки timetable, показывает расписание и выбор кнопок
     def Timetable_def(self, update, context):
         update.message.reply_text(
-            "Выдаёт расписание: всё, по дню недели, числу"
-            "Проверить наличие дз на число", reply_markup=self.markup_timetable)
+            "Здесь вы можете посмотреть расписание: всё, по дню недели, числу",
+            reply_markup=self.markup_timetable)
         con = sqlite3.connect("info1.db")
         cur = con.cursor()
         otvet = cur.execute('''SELECT raspisanie FROM users_R WHERE id IS (?)''', (self.person_id,)).fetchall()
@@ -250,11 +262,13 @@ class Menu:
             update.message.reply_text(s)
         con.close()
 
+    #функция кнопки time to end, здесь вы можете посмотреть сколько осталось дней до определенной даты
     def Time_to_end_def(self, update, context):
         update.message.reply_text("Здесь вы можете посмотреть сколько осталось дней до конца года или лета."
                                   "Или до введенной даты",
                                   reply_markup=self.markup_time_to_end)
 
+    #функция, показывающая сколько осталось дней до введенной даты
     def Until_your_data(self, update, context):
         if self.is_answer is False:
             update.message.reply_text("Здесь вы можете посмотреть сколько осталось дней до введенной даты."
@@ -286,6 +300,7 @@ class Menu:
                     self.flag_until_your_data = True
                     self.is_answer = False
 
+    #функция, показывающая сколько осталось до конца лета или года в зависимости от месяца
     def Until_end(self, update, context):
         now_date = dt.date.today()
         a = now_date.year + 1 if now_date.month > 8 else now_date.year
@@ -295,18 +310,20 @@ class Menu:
             update.message.reply_text(f"До конца лета осталось {(your_date - now_date).days} days!")
         else:
             update.message.reply_text(f"До конца года осталось {(your_date - now_date).days} days!")
-
+    #функция кнопки redact
     def Redact_def(self, update, context):
         update.message.reply_text(
-            "Тут можно изменить рассписание",
+            "Здесь вы можете изменить расписание",
             reply_markup=self.markup_reda
         )
 
+    #побочная функция
     def add_timetable(self, update, context):
         update.message.reply_text(
             "Напишите день недели")
         self.flag_add_timetable_day = True
 
+    #функция кнопки repetition, для своих тестов и самопроверки
     def Repetition_def(self, update, context):
         update.message.reply_text(
             "Здесь вы моежет создать свой собственный тест(кнопка Input), "
@@ -315,6 +332,7 @@ class Menu:
             reply_markup=self.markup_repet
         )
 
+    #функция для записи новых тестов
     def Add_answer_quest(self, update, text):
         if self.flag_add_question is False and self.flag_add_answer is False:
             update.message.reply_text(
@@ -342,6 +360,7 @@ class Menu:
             update.message.reply_text(
                 "Ваш вопрос записан! Чтобы добавить новый вопрос, нажмите на кнопку Input")
 
+    #функция для повторения изученных материалов по вопросам
     def Repet_formules(self, update, context):
         if self.i < len(self.result):
             if self.flag_person_ans is False:
@@ -387,6 +406,7 @@ class Menu:
             shuffle(self.result)
             self.is_answer = False
 
+    #функция для удаления предыдущего теста
     def Delete_test(self, update, context):
         if self.is_answer is False:
             update.message.reply_text(
@@ -410,6 +430,7 @@ class Menu:
                     "Ваш тест не был удален!")
             self.is_answer = False
 
+    #функция для показа ссылок на учебники
     def Subject_def(self, update, context):
         update.message.reply_text(
             "Здесь вы можете получить ссылки на учебники, для этого нажмите на кнопку с нужным предметом",
